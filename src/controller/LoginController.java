@@ -129,33 +129,38 @@ public class LoginController implements Initializable {
 
     public void doObfuscationAction() {
             if (authentication()) {
-                if(checkPassword(tfPassword.getText())){
-                if (certificateFile != null) {
-                    if (challenge(certificateFile, User.getUser(tfUserName.getText()).getPrivateKey())) {
-                        try {
+                if(checkPassword(tfPassword.getText())) {
+                    try{
+                    if (certificateFile.isFile()) {
+                        if (challenge(certificateFile, User.getUser(tfUserName.getText()).getPrivateKey())) {
+                            try {
 
-                            //userSerialization();
-                            final FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/Obfuscation.fxml"));
-                            ObfuscationController obfuscationController = null;
-                            loader.setController(obfuscationController);
-                            Parent root = null;
-                            root = loader.load();
-                            Scene scene = new Scene(root);
-                            Stage stage = new Stage();
-                            stage.setScene(scene);
-                            stage.setResizable(false);
-                            stage.getIcons().add(new Image(Main.class.getResourceAsStream("/resources/Protect.png")));
-                            ((Stage) bObfuscation.getScene().getWindow()).close();
-                            stage.show();
+                                //userSerialization();
+                                final FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/Obfuscation.fxml"));
+                                ObfuscationController obfuscationController = null;
+                                loader.setController(obfuscationController);
+                                Parent root = null;
+                                root = loader.load();
+                                Scene scene = new Scene(root);
+                                Stage stage = new Stage();
+                                stage.setScene(scene);
+                                stage.setResizable(false);
+                                stage.getIcons().add(new Image(Main.class.getResourceAsStream("/resources/Protect.png")));
+                                ((Stage) bObfuscation.getScene().getWindow()).close();
+                                stage.show();
 
-                        } catch (IOException e) {
-                            Logger.getLogger(LoginController.class.getName()).log(Level.SEVERE, null, e);
+                            } catch (IOException e) {
+                                Logger.getLogger(LoginController.class.getName()).log(Level.SEVERE, null, e);
+                            }
+                        } else {
+                            challengeAlarm();
+                            return;
                         }
                     } else {
-                        challengeAlarm();
+                        pathToUserCertificateAlarm();
                         return;
                     }
-                } else {
+                }catch(Exception e){
                     pathToUserCertificateAlarm();
                     return;
                 }
