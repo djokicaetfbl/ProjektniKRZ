@@ -1,0 +1,20 @@
+<component name="libraryTable">
+  <library name="lib">
+    <CLASSES>
+      <root url="file://$JAVAFX$" />
+      <root url="file://$PROJECT_DIR$/bouncyCastleLib" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$JAVAFX$/javafx.base" />
+      <root url="file://$JAVAFX$/javafx.controls" />
+      <root url="file://$JAVAFX$/javafx.fxml" />
+      <root url="file://$JAVAFX$/javafx.graphics" />
+      <root url="file://$JAVAFX$/javafx.media" />
+      <root url="file://$JAVAFX$/javafx.swing" />
+      <root url="file://$JAVAFX$/javafx.web" />
+    </SOURCES>
+    <jarDirectory url="file://$JAVAFX$" recursive="false" />
+    <jarDirectory url="file://$PROJECT_DIR$/bouncyCastleLib" recursive="false" />
+  </library>
+</component>

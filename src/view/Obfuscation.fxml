@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.ObfuscationController">
+   <children>
+      <HBox layoutX="14.0" layoutY="29.0" prefHeight="399.0" prefWidth="574.0" AnchorPane.bottomAnchor="176.0" AnchorPane.leftAnchor="50.0" AnchorPane.rightAnchor="176.0" AnchorPane.topAnchor="25.0">
+         <children>
+            <VBox prefHeight="446.0" prefWidth="169.0">
+               <HBox.margin>
+                  <Insets />
+               </HBox.margin>
+               <children>
+                  <Label text="Izaberite nacin rada">
+                     <font>
+                        <Font name="Bell MT" size="20.0" />
+                     </font>
+                  </Label>
+               </children>
+            </VBox>
+            <VBox prefHeight="200.0" prefWidth="100.0" spacing="10.0">
+               <children>
+                  <RadioButton fx:id="rbEncrypt" mnemonicParsing="false" text="Enkripcija sadrzaja" wrapText="true">
+                     <font>
+                        <Font name="Bell MT" size="14.0" />
+                     </font>
+                  </RadioButton>
+                  <RadioButton fx:id="rbDecrypt" mnemonicParsing="false" text="Dekripcija i validacija zadrzaja" wrapText="true">
+                     <font>
+                        <Font name="Bell MT" size="14.0" />
+                     </font>
+                  </RadioButton>
+               </children>
+               <HBox.margin>
+                  <Insets top="5.0" />
+               </HBox.margin>
+            </VBox>
+            <VBox prefHeight="428.0" prefWidth="160.0" spacing="10.0">
+               <children>
+                  <Label fx:id="lChooseSourceCode" text="Izaberite datoteku sa izvornim kodom" wrapText="true">
+                     <font>
+                        <Font name="Bell MT" size="20.0" />
+                     </font>
+                  </Label>
+                  <Label fx:id="lChooseHashAlgorithm" text="Izaberite algoritam za heširanje" wrapText="true">
+                     <font>
+                        <Font name="Bell MT" size="20.0" />
+                     </font>
+                  </Label>
+                  <Label fx:id="lChooseEncryptAlgorithm" text="Izaberite algoritam za enkripciju" wrapText="true">
+                     <font>
+                        <Font name="Bell MT" size="20.0" />
+                     </font>
+                  </Label>
+                  <Label fx:id="lChooseSender" text="Izaberite primaoca">
+                     <font>
+                        <Font name="Bell MT" size="20.0" />
+                     </font>
+                  </Label>
+                  <Label fx:id="lChooseCryptContent" text="Izaberite kriptovani sadrzaj" wrapText="true">
+                     <font>
+                        <Font name="Bell MT" size="20.0" />
+                     </font>
+                  </Label>
+               </children>
+            </VBox>
+            <VBox prefHeight="550.0" prefWidth="141.0" spacing="33.0">
+               <children>
+                  <Button fx:id="bChooseSourceCode" mnemonicParsing="false" prefHeight="21.0" prefWidth="203.0" />
+                  <ComboBox fx:id="cmbHashAlgorihm" prefHeight="25.0" prefWidth="205.0" />
+                  <ComboBox fx:id="cmbEncryptAlgorithm" prefHeight="16.0" prefWidth="203.0" />
+                  <ComboBox fx:id="cmbReciver" prefHeight="25.0" prefWidth="203.0" />
+                  <ComboBox fx:id="cmbEncryptedContent" prefWidth="150.0" />
+               </children>
+               <padding>
+                  <Insets top="5.0" />
+               </padding>
+            </VBox>
+         </children>
+      </HBox>
+      <Button fx:id="bSendEncryptedContent" layoutX="634.0" layoutY="424.0" mnemonicParsing="false" prefHeight="25.0" prefWidth="141.0" text="Posalji">
+         <font>
+            <Font name="Bell MT" size="14.0" />
+         </font>
+      </Button>
+      <Button fx:id="bExit" layoutX="14.0" layoutY="550.0" mnemonicParsing="false" prefHeight="25.0" prefWidth="141.0" text="Izlaz">
+         <font>
+            <Font name="Bell MT" size="14.0" />
+         </font>
+      </Button>
+      <Button fx:id="bDecryptContent" layoutX="634.0" layoutY="472.0" mnemonicParsing="false" prefHeight="25.0" prefWidth="141.0" text="Dekriptuj">
+         <font>
+            <Font name="Bell MT" size="14.0" />
+         </font>
+      </Button>
+      <Button fx:id="bCompileAndRun" layoutX="634.0" layoutY="525.0" mnemonicParsing="false" prefHeight="25.0" prefWidth="141.0" text="Izvrši">
+         <font>
+            <Font name="Bell MT" size="14.0" />
+         </font>
+      </Button>
+   </children>
+</AnchorPane>
