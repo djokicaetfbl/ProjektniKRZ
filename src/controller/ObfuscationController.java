@@ -7,19 +7,20 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.RadioButton;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import main.Main;
+import model.User;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /** The steps followed in creating digital signature are :
 
@@ -95,6 +96,8 @@ public class ObfuscationController implements Initializable {
     public static final String des3 = "DES3";
     public static final Integer des3KeyBitSize = 112;
 
+    private File excetuteFile;
+
     void bExitAction() {
         ((Stage) bExit.getScene().getWindow()).close();
         final FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/Login.fxml"));
@@ -154,7 +157,15 @@ public class ObfuscationController implements Initializable {
     }
 
     public void sourceCodeFileChooserAction() {
-
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setInitialDirectory(new File(System.getProperty("user.dir")));
+        File selectedFile = fileChooser.showOpenDialog(bChooseSourceCode.getScene().getWindow());
+        if(!(selectedFile.isFile() && selectedFile.toString().substring(selectedFile.toString().lastIndexOf(".")).equals(".java"))) {
+            wrongSelectFileType();
+            return;
+        } else {
+            excetuteFile = selectedFile;
+        }
     }
 
     public void setRbEncryptPanel(){
@@ -204,5 +215,27 @@ public class ObfuscationController implements Initializable {
         bExit.setOnAction(x -> bExitAction());
         rbEncrypt.setOnAction(x -> setRbEncryptPanel());
         rbDecrypt.setOnAction(x -> setRbDencryptPanel());
+        cmbEncryptAlgorithm.setOnAction(x -> chooseEncryptAlgorithmAction());
+        cmbHashAlgorihm.setOnAction(x -> chooseHashAlgorithmAction());
+        cmbEncryptedContent.setOnAction(x -> chooseEncryptedContentAction());
+        bChooseSourceCode.setOnAction(x -> sourceCodeFileChooserAction());
+        cmbReciver.setOnAction(x -> chooseReciverAction());
+        bSendEncryptedContent.setOnAction(x -> sendEncryptedContentAction());
+        bDecryptContent.setOnAction(x -> decryptContentAction());
+        bCompileAndRun.setOnAction(x -> compileAndRunAction());
+
+
+        cmbEncryptAlgorithm.getItems().addAll(aes,blowfish,des3);
+        cmbHashAlgorihm.getItems().addAll(sha256withrsa,sha512withrsa);
+        cmbReciver.getItems().addAll(User.userList.stream().filter(x -> !x.getUsername().equals(LoginController.currentUser.getUsername())).collect(Collectors.toList()));
+
+    }
+
+    private static void wrongSelectFileType() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Upozorenje");
+        alert.setHeaderText("Pogresan fajl");
+        alert.setContentText("Izaberite fajl sa ekstenzijom .java !");
+        alert.showAndWait();
     }
 }
