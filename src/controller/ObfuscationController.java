@@ -21,6 +21,21 @@ import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/** The steps followed in creating digital signature are :
+
+ 1.Message digest is computed by applying hash function on the message and then message digest is encrypted using private key of sender to form the digital signature.
+ (digital signature = encryption (private key of sender, message digest) and message digest = message digest algorithm(message)).
+ 2.Digital signature is then transmitted with the message.(message + digital signature is transmitted)
+ 3.Receiver decrypts the digital signature using the public key of sender.(This assures authenticity,as only sender has his private key so only sender can encrypt using
+ his private key which can thus be decrypted by sender’s public key).
+ 4.The receiver now has the message digest.
+ 5.The receiver can compute the message digest from the message (actual message is sent with the digital signature).
+ 6.The message digest computed by receiver and the message digest (got by decryption on digital signature) need to be same for ensuring integrity.
+
+ Message digest is computed using one-way hash function, i.e. a hash fucntion in which computation of hash value of a is easy but computation of a from hash value of a is very difficult.
+ */
+
+
 public class ObfuscationController implements Initializable {
 
     @FXML
@@ -70,6 +85,15 @@ public class ObfuscationController implements Initializable {
 
     @FXML
     private Label lChooseCryptContent;
+
+    public static final String sha256withrsa = "SHA256WithRSA";
+    public static final String sha512withrsa = "SHA512WithRSA";
+    public static final String aes = "AES";
+    public static final Integer aesKeyBitSize = 256;
+    public static final String blowfish = "Blowfish";
+    public static final Integer blowfishKeyBitSize = 128;
+    public static final String des3 = "DES3";
+    public static final Integer des3KeyBitSize = 112;
 
     void bExitAction() {
         ((Stage) bExit.getScene().getWindow()).close();
