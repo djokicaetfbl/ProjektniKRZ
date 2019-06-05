@@ -12,11 +12,26 @@ import javafx.scene.image.Image;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import main.Main;
+import model.Services;
 import model.User;
+import org.bouncycastle.util.encoders.Hex;
 
+import javax.crypto.*;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.util.Base64;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -95,6 +110,7 @@ public class ObfuscationController implements Initializable {
     public static final Integer blowfishKeyBitSize = 128;
     public static final String des3 = "DES3";
     public static final Integer des3KeyBitSize = 112;
+    public static String userContentPath;
 
     private File excetuteFile;
 
@@ -152,7 +168,64 @@ public class ObfuscationController implements Initializable {
 
     }
 
+
+
     public void sendEncryptedContentAction() {
+
+        userContentPath = System.getProperty("user.dir") + File.separator+ "users" + File.separator + cmbReciver.getSelectionModel().getSelectedItem().toString()+File.separator + "userContent";
+        if(!new File(userContentPath).exists()){
+            new File(userContentPath).mkdir();
+        }
+
+        byte[] digitalSignatureOfDocument = Services.digitalSignature(excetuteFile,cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString(), LoginController.currentUser.getPrivateKey());
+        SecretKey secretKey = Services.generateSecretKey(cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString());
+
+        System.out.println("Digital signature: "+digitalSignatureOfDocument);
+        System.out.println("Secret session key1: "+secretKey.getEncoded());
+        System.out.println("Secret session key2: "+ Hex.toHexString(secretKey.getEncoded()));
+
+        ByteBuffer fileHeaderByteBuffer =  ByteBuffer.allocate(excetuteFile.getName().getBytes(StandardCharsets.UTF_8).length + cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString().length()
+        + cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString().length()+ Hex.toHexString(secretKey.getEncoded()).length() + 4*("#".getBytes(StandardCharsets.UTF_8).length)
+        + LoginController.currentUser.getUsername().getBytes(StandardCharsets.UTF_8).length);
+
+        fileHeaderByteBuffer.put(excetuteFile.getName().getBytes(StandardCharsets.UTF_8));
+        fileHeaderByteBuffer.put(cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString().getBytes(StandardCharsets.UTF_8));
+        fileHeaderByteBuffer.put(cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString().getBytes(StandardCharsets.UTF_8));
+        fileHeaderByteBuffer.put(Hex.toHexString(secretKey.getEncoded()).getBytes(StandardCharsets.UTF_8));
+        fileHeaderByteBuffer.put("#".getBytes(StandardCharsets.UTF_8));
+        fileHeaderByteBuffer.put(LoginController.currentUser.getUsername().getBytes(StandardCharsets.UTF_8));
+
+        String reciverContentPath = userContentPath+File.separator + excetuteFile.getName().toString()+".enc";
+        if(! new File(reciverContentPath).exists()) {
+            try {
+                new File(reciverContentPath).createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("RECIVER PATH: "+reciverContentPath);
+        Cipher cipher = null;
+        try {
+             cipher = Cipher.getInstance("RSA");
+             cipher.init(Cipher.ENCRYPT_MODE,((User)cmbReciver.getSelectionModel().getSelectedItem()).getPublicKey());
+             Files.write(Paths.get(reciverContentPath), Base64.getEncoder().encodeToString(cipher.doFinal(fileHeaderByteBuffer.array())).getBytes(StandardCharsets.UTF_8),StandardOpenOption.CREATE);
+             Files.write(Paths.get(reciverContentPath), "#".getBytes(StandardCharsets.UTF_8),StandardOpenOption.APPEND);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (BadPaddingException e) {
+            e.printStackTrace();
+        } catch (IllegalBlockSizeException e) {
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
 
     }
 
