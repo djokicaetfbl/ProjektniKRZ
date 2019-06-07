@@ -17,6 +17,7 @@ import model.User;
 import org.bouncycastle.util.encoders.Hex;
 
 import javax.crypto.*;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -30,12 +31,18 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static model.Services.dencryptFileWithSesionKey;
 
 /** The steps followed in creating digital signature are :
 
@@ -113,6 +120,7 @@ public class ObfuscationController implements Initializable {
     public static String userContentPath;
 
     private File excetuteFile;
+    private File fileForCompile;
 
     void bExitAction() {
         ((Stage) bExit.getScene().getWindow()).close();
@@ -157,15 +165,86 @@ public class ObfuscationController implements Initializable {
     }
 
     public void decryptContentAction() {
+        if(!cmbEncryptedContent.getSelectionModel().isEmpty()) {
+            try{
+            userContentPath = System.getProperty("user.dir") + File.separator + "users" + File.separator + LoginController.currentUser.getUsername() +
+                    File.separator + "userContent" + File.separator + cmbEncryptedContent.getSelectionModel().getSelectedItem();
+            System.out.println("USER CONTENT PATH: " + userContentPath);
+            String fileContent = Files.readAllLines(Paths.get(userContentPath), StandardCharsets.UTF_8).stream().collect(Collectors.joining("")); //data
+
+
+            System.out.println("FILE CONTENT: " + fileContent);
+
+            byte[] decodeFileHeader = Base64.getDecoder().decode(fileContent.split("#")[0].getBytes(StandardCharsets.UTF_8)); //username // header
+
+            System.out.println("DECODE FILE HEADER: " + decodeFileHeader);
+
+            byte[] decryptFileHeader = Services.decryptHeader(decodeFileHeader,LoginController.currentUser.getPrivateKey());
+            System.out.println("DECRYPT FILE HEADER: "+decryptFileHeader);
+
+            String headerFileString = new String(decryptFileHeader, 0, decryptFileHeader.length, StandardCharsets.UTF_8);
+            System.out.println("HEADER FILE STRING: "+headerFileString);
+
+            byte[] sessionKey;
+
+                sessionKey = Hex.decode(headerFileString.split("#")[1].getBytes("UTF-8")); // secret key
+            System.out.println("SESSION KEY: " + sessionKey);
+                byte[] digitalSignature;
+                try {
+                    digitalSignature = Hex.decode(fileContent.split("#")[2].getBytes(StandardCharsets.UTF_8));// VRATI OVO
+                    System.out.println("DIGITAL SIGNATURE: "+digitalSignature);
+                } catch (Exception ex) {
+                    System.out.println("Sadrzaj poruke je ostecen!");
+                    return;
+                }
+
+            System.out.println("ENCRYPT ALGORITHM: " + headerFileString.split("#")[2]);
+                SecretKey originalKey = new SecretKeySpec(sessionKey, 0, sessionKey.length, headerFileString.split("#")[2]);
+                byte[] javaClassInByte;
+                try {
+                    javaClassInByte = Base64.getDecoder().decode(fileContent.split("#")[1]); // session key
+                } catch (Exception ex) {
+                    System.out.println("Sadrzaj poruke je ostecen!");
+                    return;
+                }
+                System.out.println("JAVA CLASS IN BYTE: "+javaClassInByte);
+                System.out.println("ORIGINAL KEY: "+originalKey);
+                byte[] textInByte = Services.dencryptFileWithSesionKey(javaClassInByte, originalKey, headerFileString.split("#")[2]);
+                String fileText = new String(textInByte,0,textInByte.length,StandardCharsets.UTF_8);
+
+                if(Services.verificationOfDigitalSignature(fileText.getBytes(), digitalSignature,headerFileString.split("#")[3],User.getUser(headerFileString.split("#")[0]))){
+                    fileForCompile = new File(System.getProperty("user.dir") + File.separator + "users" + File.separator + LoginController.currentUser.getUsername() +
+                            File.separator + "userContent" + File.separator + headerFileString.split("#")[4]);
+                    Files.write(fileForCompile.toPath(),fileText.getBytes(),StandardOpenOption.CREATE);
+                } else {
+                    System.out.println("PORUKA JE MJENJANA !!");
+                }
+
+
+
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+
+        } else {
+            encryptedFileNotSelected();
+        }
+
 
     }
 
-    public void decryptModeAction() {
-
-    }
-
-    public void encryptModeAction() {
-
+    public List<File> getUserContent(){
+        List<Path> userContentFileList = null;
+        List<File> files = new ArrayList<File>();
+        try(Stream<Path> walk = Files.walk(Paths.get(System.getProperty("user.dir") + File.separator + "users" + File.separator + LoginController.currentUser.getUsername() + File.separator + "userContent"))){
+            userContentFileList =  walk.filter(x -> x.getFileName().toString().endsWith(".enc")).collect(Collectors.toList());
+            userContentFileList.forEach(x ->{
+                files.add(x.toFile());
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return  files;
     }
 
 
@@ -180,22 +259,33 @@ public class ObfuscationController implements Initializable {
         byte[] digitalSignatureOfDocument = Services.digitalSignature(excetuteFile,cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString(), LoginController.currentUser.getPrivateKey());
         SecretKey secretKey = Services.generateSecretKey(cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString());
 
-        System.out.println("Digital signature: "+digitalSignatureOfDocument);
-        System.out.println("Secret session key1: "+secretKey.getEncoded());
-        System.out.println("Secret session key2: "+ Hex.toHexString(secretKey.getEncoded()));
+        String hexForUsedSessionKey = Hex.toHexString(secretKey.getEncoded());
+        ByteBuffer fileHeaderByteBuffer =  ByteBuffer.allocate(LoginController.currentUser.getUsername().length()+ Hex.toHexString(secretKey.getEncoded()).length() + cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString().length()
+        + cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString().length() + 4 * "#".getBytes(StandardCharsets.UTF_8).length
+        +  excetuteFile.getName().getBytes(StandardCharsets.UTF_8).length);
 
-        ByteBuffer fileHeaderByteBuffer =  ByteBuffer.allocate(excetuteFile.getName().getBytes(StandardCharsets.UTF_8).length + cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString().length()
-        + cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString().length()+ Hex.toHexString(secretKey.getEncoded()).length() + 4*("#".getBytes(StandardCharsets.UTF_8).length)
-        + LoginController.currentUser.getUsername().getBytes(StandardCharsets.UTF_8).length);
+        System.out.println("LIMIT: "+fileHeaderByteBuffer.limit());
 
-        fileHeaderByteBuffer.put(excetuteFile.getName().getBytes(StandardCharsets.UTF_8));
-        fileHeaderByteBuffer.put(cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString().getBytes(StandardCharsets.UTF_8));
+        try {
+            fileHeaderByteBuffer.put(LoginController.currentUser.getUsername().getBytes("UTF-8"));
+
+            fileHeaderByteBuffer.put("#".getBytes("UTF-8"));
+        fileHeaderByteBuffer.put((hexForUsedSessionKey.getBytes("UTF-8")));
+
+        fileHeaderByteBuffer.put("#".getBytes("UTF-8"));
+
         fileHeaderByteBuffer.put(cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString().getBytes(StandardCharsets.UTF_8));
-        fileHeaderByteBuffer.put(Hex.toHexString(secretKey.getEncoded()).getBytes(StandardCharsets.UTF_8));
-        fileHeaderByteBuffer.put("#".getBytes(StandardCharsets.UTF_8));
-        fileHeaderByteBuffer.put(LoginController.currentUser.getUsername().getBytes(StandardCharsets.UTF_8));
+        fileHeaderByteBuffer.put("#".getBytes("UTF-8"));
 
-        String reciverContentPath = userContentPath+File.separator + excetuteFile.getName().toString()+".enc";
+        fileHeaderByteBuffer.put(cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString().getBytes(StandardCharsets.UTF_8));
+        fileHeaderByteBuffer.put("#".getBytes("UTF-8"));
+
+        fileHeaderByteBuffer.put(excetuteFile.getName().getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+
+        String reciverContentPath = userContentPath+File.separator + excetuteFile.getName()+".enc";
         if(! new File(reciverContentPath).exists()) {
             try {
                 new File(reciverContentPath).createNewFile();
@@ -204,28 +294,23 @@ public class ObfuscationController implements Initializable {
             }
         }
         System.out.println("RECIVER PATH: "+reciverContentPath);
-        Cipher cipher = null;
+
         try {
-             cipher = Cipher.getInstance("RSA");
-             cipher.init(Cipher.ENCRYPT_MODE,((User)cmbReciver.getSelectionModel().getSelectedItem()).getPublicKey());
-             Files.write(Paths.get(reciverContentPath), Base64.getEncoder().encodeToString(cipher.doFinal(fileHeaderByteBuffer.array())).getBytes(StandardCharsets.UTF_8),StandardOpenOption.CREATE);
-             Files.write(Paths.get(reciverContentPath), "#".getBytes(StandardCharsets.UTF_8),StandardOpenOption.APPEND);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
+            byte[] encryptHeader = Services.encryptHeader(fileHeaderByteBuffer, ((User) cmbReciver.getSelectionModel().getSelectedItem()).getPublicKey());
+            Files.write(Paths.get(reciverContentPath), Base64.getEncoder().encodeToString(encryptHeader).getBytes("UTF-8"), StandardOpenOption.CREATE);
+            Files.write(Paths.get(reciverContentPath), "#".getBytes("UTF-8"), StandardOpenOption.APPEND);
+
+            byte[] encFileWithSesKey = Base64.getEncoder().encodeToString(Services.encryptFileWithSesionKey(excetuteFile, secretKey, cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString())).getBytes("UTF-8");
+            Files.write(Paths.get(reciverContentPath), encFileWithSesKey, StandardOpenOption.APPEND);
+            Files.write(Paths.get(reciverContentPath), "#".getBytes("UTF-8"), StandardOpenOption.APPEND);
+
+            Files.write(Paths.get(reciverContentPath), Hex.toHexString(digitalSignatureOfDocument).getBytes("UTF-8"), StandardOpenOption.APPEND);
+            succesTransactionInfo();
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
-
 
     }
 
@@ -251,6 +336,12 @@ public class ObfuscationController implements Initializable {
         rbEncrypt.setSelected(false);
         hideShowAllEncrypt(false);
         hideShowAllDecrypt(true);
+        List<File> userFiles = getUserContent();
+        List<String> userContentFilesName = new ArrayList<String>();
+        userFiles.forEach(x -> {
+            userContentFilesName.add(x.getName());
+        });
+        cmbEncryptedContent.getItems().addAll(userContentFilesName);
     }
 
     public void hideShowAllEncrypt(boolean status){
@@ -302,13 +393,35 @@ public class ObfuscationController implements Initializable {
         cmbHashAlgorihm.getItems().addAll(sha256withrsa,sha512withrsa);
         cmbReciver.getItems().addAll(User.userList.stream().filter(x -> !x.getUsername().equals(LoginController.currentUser.getUsername())).collect(Collectors.toList()));
 
+        /*if(rbDecrypt.isSelected()){
+            System.out.println("RRRRRRRRRRRRRRRR");
+            List<File> userFiles = getUserContent();
+            cmbEncryptedContent.getItems().addAll(userFiles.toString());
+        }*/
     }
 
-    private static void wrongSelectFileType() {
+    private void wrongSelectFileType() {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle("Upozorenje");
         alert.setHeaderText("Pogresan fajl");
         alert.setContentText("Izaberite fajl sa ekstenzijom .java !");
         alert.showAndWait();
     }
+
+    private void succesTransactionInfo() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Obavjestenje");
+        alert.setHeaderText("Fajl uspjesno poslat!");
+        alert.setContentText("Fajl uspjesno poslat!");
+        alert.showAndWait();
+    }
+
+    private void encryptedFileNotSelected() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Upozorenje");
+        alert.setHeaderText("Izaberite fajl kriptovani sadrzaj !");
+        alert.setContentText("Izaberite fajl kriptovani sadrzaj !");
+        alert.showAndWait();
+    }
+
 }

@@ -58,6 +58,8 @@ public class LoginController implements Initializable {
 
     public static File certificateFile = null;
 
+    public static User currentUser;
+
 
     public static void userSerialization(){
         try(ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("user.ser")))){
@@ -133,6 +135,9 @@ public class LoginController implements Initializable {
                     try{
                     if (certificateFile.isFile()) {
                         if (challenge(certificateFile, User.getUser(tfUserName.getText()).getPrivateKey())) {
+                            currentUser = User.getUser(tfUserName.getText());
+                            System.out.println("TRENUTNI KORISNIK: "+currentUser);
+                            System.out.println("SIFRA: "+currentUser.getPrivateKey()+ " \n"+currentUser.getPublicKey());
                             try {
 
                                 //userSerialization();
@@ -176,7 +181,7 @@ public class LoginController implements Initializable {
 
     public void pathToUserCertificateAction() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setInitialDirectory(new File(System.getProperty("user.dir")));  //jenkov
+        fileChooser.setInitialDirectory(new File(System.getProperty("user.dir")));
         File selectedFile = fileChooser.showOpenDialog(bFileChooser.getScene().getWindow());
         certificateFile = selectedFile;
         if(certificateFile != null){
@@ -238,15 +243,6 @@ public class LoginController implements Initializable {
             bObfuscation.setOnAction(x -> doObfuscationAction());
             checkBoxConfirmCertificate.setVisible(false);
             checkBoxConfirmCertificate.setSelected(false);
-    }
-
-
-    private static void authenticationUserNameAlarm() {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Upozorenje");
-        alert.setHeaderText("Autentifikacija");
-        alert.setContentText("Korisnicko ime vec postoji!");
-        alert.showAndWait();
     }
 
     private static void authenticationAlarm() {
