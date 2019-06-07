@@ -1,38 +1,29 @@
 package controller;
 
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import main.Main;
 import model.Services;
 import model.User;
 import org.bouncycastle.util.encoders.Hex;
 
 import javax.crypto.*;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.File;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.PrivateKey;
+import java.security.*;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -41,8 +32,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static model.Services.dencryptFileWithSesionKey;
 
 /** The steps followed in creating digital signature are :
 
@@ -115,8 +104,10 @@ public class ObfuscationController implements Initializable {
     public static final Integer aesKeyBitSize = 256;
     public static final String blowfish = "Blowfish";
     public static final Integer blowfishKeyBitSize = 128;
-    public static final String des3 = "DES3";
-    public static final Integer des3KeyBitSize = 112;
+    //public static final String des = "des";
+    public static final String des = "DES";
+    //public static final Integer desKeyBitSize = 112;
+    public static final Integer desKeyBitSize = 56;
     public static String userContentPath;
 
     private File excetuteFile;
@@ -179,20 +170,20 @@ public class ObfuscationController implements Initializable {
 
             System.out.println("DECODE FILE HEADER: " + decodeFileHeader);
 
-            byte[] decryptFileHeader = Services.decryptHeader(decodeFileHeader,LoginController.currentUser.getPrivateKey());
-            System.out.println("DECRYPT FILE HEADER: "+decryptFileHeader);
+            byte[] decryptHeaderFromFile = decryptFileHeader(decodeFileHeader,LoginController.currentUser.getPrivateKey());
+            System.out.println("DECRYPT FILE HEADER: "+decryptHeaderFromFile);
 
-            String headerFileString = new String(decryptFileHeader, 0, decryptFileHeader.length, StandardCharsets.UTF_8);
+            String headerFileString = new String(decryptHeaderFromFile, 0, decryptHeaderFromFile.length, StandardCharsets.UTF_8);
             System.out.println("HEADER FILE STRING: "+headerFileString);
 
             byte[] sessionKey;
 
                 sessionKey = Hex.decode(headerFileString.split("#")[1].getBytes("UTF-8")); // secret key
             System.out.println("SESSION KEY: " + sessionKey);
-                byte[] digitalSignature;
+                byte[] digitalSignatureFromFile;
                 try {
-                    digitalSignature = Hex.decode(fileContent.split("#")[2].getBytes(StandardCharsets.UTF_8));// VRATI OVO
-                    System.out.println("DIGITAL SIGNATURE: "+digitalSignature);
+                    digitalSignatureFromFile = Hex.decode(fileContent.split("#")[2].getBytes(StandardCharsets.UTF_8));// VRATI OVO
+                    System.out.println("DIGITAL SIGNATURE: "+digitalSignatureFromFile);
                 } catch (Exception ex) {
                     System.out.println("Sadrzaj poruke je ostecen!");
                     return;
@@ -209,10 +200,10 @@ public class ObfuscationController implements Initializable {
                 }
                 System.out.println("JAVA CLASS IN BYTE: "+javaClassInByte);
                 System.out.println("ORIGINAL KEY: "+originalKey);
-                byte[] textInByte = Services.dencryptFileWithSesionKey(javaClassInByte, originalKey, headerFileString.split("#")[2]);
+                byte[] textInByte = dencryptFileWithSesionKey(javaClassInByte, originalKey, headerFileString.split("#")[2]);
                 String fileText = new String(textInByte,0,textInByte.length,StandardCharsets.UTF_8);
 
-                if(Services.verificationOfDigitalSignature(fileText.getBytes(), digitalSignature,headerFileString.split("#")[3],User.getUser(headerFileString.split("#")[0]))){
+                if(verificationOfDigitalSignature(fileText.getBytes(), digitalSignatureFromFile,headerFileString.split("#")[3],User.getUser(headerFileString.split("#")[0]))){
                     fileForCompile = new File(System.getProperty("user.dir") + File.separator + "users" + File.separator + LoginController.currentUser.getUsername() +
                             File.separator + "userContent" + File.separator + headerFileString.split("#")[4]);
                     Files.write(fileForCompile.toPath(),fileText.getBytes(),StandardOpenOption.CREATE);
@@ -256,8 +247,8 @@ public class ObfuscationController implements Initializable {
             new File(userContentPath).mkdir();
         }
 
-        byte[] digitalSignatureOfDocument = Services.digitalSignature(excetuteFile,cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString(), LoginController.currentUser.getPrivateKey());
-        SecretKey secretKey = Services.generateSecretKey(cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString());
+        byte[] digitalSignatureOfDocument = digitalSignature(excetuteFile,cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString(), LoginController.currentUser.getPrivateKey());
+        SecretKey secretKey = generateSecretKey(cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString());
 
         String hexForUsedSessionKey = Hex.toHexString(secretKey.getEncoded());
         ByteBuffer fileHeaderByteBuffer =  ByteBuffer.allocate(LoginController.currentUser.getUsername().length()+ Hex.toHexString(secretKey.getEncoded()).length() + cmbHashAlgorihm.getSelectionModel().getSelectedItem().toString().length()
@@ -296,11 +287,11 @@ public class ObfuscationController implements Initializable {
         System.out.println("RECIVER PATH: "+reciverContentPath);
 
         try {
-            byte[] encryptHeader = Services.encryptHeader(fileHeaderByteBuffer, ((User) cmbReciver.getSelectionModel().getSelectedItem()).getPublicKey());
-            Files.write(Paths.get(reciverContentPath), Base64.getEncoder().encodeToString(encryptHeader).getBytes("UTF-8"), StandardOpenOption.CREATE);
+            byte[] encryptHeaderFromFile = encryptFileHeader(fileHeaderByteBuffer, ((User) cmbReciver.getSelectionModel().getSelectedItem()).getPublicKey());
+            Files.write(Paths.get(reciverContentPath), Base64.getEncoder().encodeToString(encryptHeaderFromFile).getBytes("UTF-8"), StandardOpenOption.CREATE);
             Files.write(Paths.get(reciverContentPath), "#".getBytes("UTF-8"), StandardOpenOption.APPEND);
 
-            byte[] encFileWithSesKey = Base64.getEncoder().encodeToString(Services.encryptFileWithSesionKey(excetuteFile, secretKey, cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString())).getBytes("UTF-8");
+            byte[] encFileWithSesKey = Base64.getEncoder().encodeToString(encryptFileWithSesionKey(excetuteFile, secretKey, cmbEncryptAlgorithm.getSelectionModel().getSelectedItem().toString())).getBytes("UTF-8");
             Files.write(Paths.get(reciverContentPath), encFileWithSesKey, StandardOpenOption.APPEND);
             Files.write(Paths.get(reciverContentPath), "#".getBytes("UTF-8"), StandardOpenOption.APPEND);
 
@@ -372,6 +363,123 @@ public class ObfuscationController implements Initializable {
         hideShowAllDecrypt(false);
     }
 
+        public static byte[] digitalSignature(File file, String hash, PrivateKey senderPrivateKey) {
+        byte[] digitalSignatureData = null;
+        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file))) {
+            Signature signature = Signature.getInstance(hash, "BC");
+            signature.initSign(senderPrivateKey);
+
+            while (bis.available() != 0) {
+                byte[] buffer = new byte[bis.available() > 8192 * 10 ? 8192 : 1024];
+                int readSize = bis.read(buffer);
+                signature.update(buffer, 0, readSize);
+            }
+            digitalSignatureData = signature.sign();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (SignatureException e) {
+            e.printStackTrace();
+        } catch (NoSuchProviderException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        }
+        System.out.println("DIGITAL SIGNATURE: "+digitalSignatureData);
+        return digitalSignatureData;
+    }
+
+    public static boolean verificationOfDigitalSignature(byte[] originalFile, byte[] didgitalSignatureData, String hash, User sender) {
+        try {
+            Signature signature = Signature.getInstance(hash, "BC");
+            signature.initVerify(sender.getPublicKey());
+            signature.update(originalFile);
+            return signature.verify(didgitalSignatureData);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (SignatureException e) {
+            e.printStackTrace();
+        } catch (NoSuchProviderException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static byte[] encryptFileWithSesionKey(File file, SecretKey secretKey, String symmetricAlgorithm) {
+        try {
+            //  int size = symmetricAlgorithm.equals(ObfuscationController.aes) ? 16 : 8;
+            int size = 0;
+            if(symmetricAlgorithm.equals("AES")){
+                size = 16; //16B block
+                System.out.println("JESTE KOD ENKRIPCIJE 16");
+            } else {
+                size = 8;
+            }
+            byte[] vector = new byte[size];
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] = secretKey.getEncoded()[i];
+            }
+            IvParameterSpec ivParameterSpec = new IvParameterSpec(vector);
+            Cipher cipher = Cipher.getInstance(symmetricAlgorithm + "/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivParameterSpec);
+            return cipher.doFinal(Files.readAllBytes(file.toPath()));
+        } catch (NoSuchAlgorithmException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (NoSuchPaddingException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (InvalidKeyException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (IOException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (BadPaddingException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (IllegalBlockSizeException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (InvalidAlgorithmParameterException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        }
+        return null;
+    }
+
+    public static byte[] dencryptFileWithSesionKey(byte[] file, SecretKey secretKey, String symmetricAlgorithm) {
+        try {
+            //int size = symmetricAlgorithm.equals(ObfuscationController.aes) ? 16 : 8;
+            int size = 0;
+            if(symmetricAlgorithm.equals("AES")){
+                System.out.println("JESTE KOD DEKRIPCIJE 16");
+                size = 16;
+            } else {
+                size = 8;
+            }
+            byte[] vector = new byte[size];
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] = secretKey.getEncoded()[i];
+            }
+            IvParameterSpec ivParameterSpec = new IvParameterSpec(vector);
+            Cipher cipher = Cipher.getInstance(symmetricAlgorithm + "/CBC/PKCS5Padding");
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, ivParameterSpec);
+            return cipher.doFinal(file);
+        } catch (NoSuchAlgorithmException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (NoSuchPaddingException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (InvalidKeyException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (BadPaddingException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (IllegalBlockSizeException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        } catch (InvalidAlgorithmParameterException e) {
+            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+        }
+        return null;
+    }
+
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -389,16 +497,77 @@ public class ObfuscationController implements Initializable {
         bCompileAndRun.setOnAction(x -> compileAndRunAction());
 
 
-        cmbEncryptAlgorithm.getItems().addAll(aes,blowfish,des3);
+        cmbEncryptAlgorithm.getItems().addAll(aes,blowfish,des);
         cmbHashAlgorihm.getItems().addAll(sha256withrsa,sha512withrsa);
         cmbReciver.getItems().addAll(User.userList.stream().filter(x -> !x.getUsername().equals(LoginController.currentUser.getUsername())).collect(Collectors.toList()));
 
-        /*if(rbDecrypt.isSelected()){
-            System.out.println("RRRRRRRRRRRRRRRR");
-            List<File> userFiles = getUserContent();
-            cmbEncryptedContent.getItems().addAll(userFiles.toString());
-        }*/
     }
+
+    public static SecretKey generateSecretKey(String symmetricAlgorithm) {  // session key http://tutorials.jenkov.com/java-cryptography/keygenerator.html
+        SecretKey secretKey = null;
+        KeyGenerator keyGenerator = null;
+        try {
+            keyGenerator = KeyGenerator.getInstance(symmetricAlgorithm);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+
+
+        switch (symmetricAlgorithm) {
+            case ObfuscationController.aes:
+                keyGenerator.init(ObfuscationController.aesKeyBitSize, new SecureRandom());
+                break;
+            case ObfuscationController.blowfish:
+                keyGenerator.init(ObfuscationController.blowfishKeyBitSize, new SecureRandom());
+                break;
+            case ObfuscationController.des:
+                keyGenerator.init(ObfuscationController.desKeyBitSize, new SecureRandom());
+                break;
+        }
+        secretKey = keyGenerator.generateKey();
+        return secretKey;
+    }
+
+    public  byte[] encryptFileHeader(ByteBuffer header, PublicKey publicKey) {
+        try {
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            return cipher.doFinal(header.array());
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        } catch (BadPaddingException e) {
+            e.printStackTrace();
+        } catch (IllegalBlockSizeException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public  byte[] decryptFileHeader(byte[] header, PrivateKey privateKey) {
+        try {
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            return cipher.doFinal(header);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        } catch (BadPaddingException e) {
+            e.printStackTrace();
+        } catch (IllegalBlockSizeException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
+
 
     private void wrongSelectFileType() {
         Alert alert = new Alert(Alert.AlertType.WARNING);
