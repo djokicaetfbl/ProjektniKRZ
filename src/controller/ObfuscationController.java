@@ -8,7 +8,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import model.Services;
 import model.User;
 import org.bouncycastle.util.encoders.Hex;
 
@@ -429,19 +428,19 @@ public class ObfuscationController implements Initializable {
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivParameterSpec);
             return cipher.doFinal(Files.readAllBytes(file.toPath()));
         } catch (NoSuchAlgorithmException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (NoSuchPaddingException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (InvalidKeyException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (IOException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (BadPaddingException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (IllegalBlockSizeException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (InvalidAlgorithmParameterException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         }
         return null;
     }
@@ -465,17 +464,17 @@ public class ObfuscationController implements Initializable {
             cipher.init(Cipher.DECRYPT_MODE, secretKey, ivParameterSpec);
             return cipher.doFinal(file);
         } catch (NoSuchAlgorithmException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (NoSuchPaddingException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (InvalidKeyException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (BadPaddingException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (IllegalBlockSizeException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         } catch (InvalidAlgorithmParameterException e) {
-            Logger.getLogger(Services.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(ObfuscationController.class.getName()).log(Level.SEVERE, null, e);
         }
         return null;
     }
